@@ -28,11 +28,25 @@ class RecipesSpider(scrapy.Spider):
         ingredients = response.css("li.ingredient").getall()
         ingredients = [re.sub('<.*?>', '', ingredient) for ingredient in ingredients]
         ingredients = [re.sub('<!--.*?-->', '', ingredient).strip() for ingredient in ingredients]
+        
+        nutritions = response.css("div.nutrition-details li").getall()
+        nutritions = [re.sub('<[^<]+?>', '', nutrition).strip() for nutrition in nutritions]
+
+        times = {}
+        for div in response.css('div.recipe-time'):
+            time_type = div.css('h5::text').get().split()[0].lower() + "Time"  
+            time_value = div.css('p::text').get().strip() 
+            times[time_type] = time_value
+
 
         preparation = response.css("div.preparation li::text").getall()
         yield {
             "title": response.css("h1.recipe-name::text").get(),
             "description": response.css("p.description::text").get(),
             "ingredients": ingredients,
-            "preparation": preparation
+            "preparation": preparation,
+            "nutritions": nutritions
+            "totalTime": times["totalTime"],
+            "prepTime": times["prepTime"],
+            "cookTime": times["cookTime"]
         }
