@@ -4,14 +4,13 @@ import re
 class RecipesSpider(scrapy.Spider):
     name = "recipesspider"
     allowed_domains = ["tasty.co"]
-    start_urls = ["https://tasty.co"]
+    start_urls = ["https://tasty.co/latest"]
 
     def parse(self, response):
-        recipes = response.css("li.feed-item__6-col")
-    
-        for recipe in recipes: 
+        recipes = response.css("li.feed-item")
+        for recipe in recipes:
             image_url = recipe.css("div.feed-item__img img::attr(src)").get()
-            yield {
+            recipe_data = {
                 "title": recipe.css("div.feed-item__title::text").get(),
                 "url": recipe.css("a").attrib['href'],
                 "image_url": image_url
@@ -21,8 +20,7 @@ class RecipesSpider(scrapy.Spider):
 
             if recipe_url is not None:
                 next_page_url = response.urljoin(recipe_url)
-                yield response.follow(next_page_url, callback=self.parse_recipe)
-            
+                yield response.follow(next_page_url, callback=self.parse_recipe, meta=recipe_data)
 
     def parse_recipe(self, response):
         ingredients = response.css("li.ingredient").getall()
@@ -38,15 +36,14 @@ class RecipesSpider(scrapy.Spider):
             time_value = div.css('p::text').get().strip() 
             times[time_type] = time_value
 
-
         preparation = response.css("div.preparation li::text").getall()
         yield {
-            "title": response.css("h1.recipe-name::text").get(),
+            **response.meta,
             "description": response.css("p.description::text").get(),
             "ingredients": ingredients,
             "preparation": preparation,
-            "nutritions": nutritions
-            "totalTime": times["totalTime"],
-            "prepTime": times["prepTime"],
-            "cookTime": times["cookTime"]
+            "nutritions": nutritions,
+            "totalTime": times.get("totalTime", ""),
+            "prepTime": times.get("prepTime", ""),
+            "cookTime": times.get("cookTime", "")
         }
